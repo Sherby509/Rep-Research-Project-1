@@ -1,0 +1,210 @@
+---
+title: 'Reproducible Research: Peer Assessment 1'
+author: "Sherby509"
+date: "2/23/2021"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## load libraries
+```{r}
+library(dplyr)
+library(lubridate)
+library(ggplot2)
+```
+## process datasets
+```{r}
+fileUrl<-"https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+     download.file(fileUrl, destfile="StormData.csv.bz2", method="curl")
+```
+## load the dataset
+```{r}
+stormData1 <- read.csv("StormData.csv.bz2")
+```
+## structure oh the data
+```{r}
+str(stormData1)
+```
+## Defining variables
+```{r}
+stormD <- select(stormData1, BGN_DATE, EVTYPE, PROPDMG, PROPDMGEXP, CROPDMG, CROPDMGEXP, FATALITIES, INJURIES)
+```
+## Format the BGN_DATE variable as a date
+
+```{r}
+stormD$BGN_DATE <- as.Date(stormD$BGN_DATE, "%m/%d/%Y")
+```
+```{r}
+stormD$YEAR <- year(stormD$BGN_DATE)
+```
+## Considering events since 1996
+```{r}
+stormD <- filter(stormD, YEAR >= 1996)
+```
+## Considering events with health impact or economic damage
+```{r}
+stormD <- filter(stormD, PROPDMG > 0 | CROPDMG > 0 | FATALITIES > 0 | INJURIES > 0)
+```
+```{r}
+table(stormD$PROPDMGEXP)
+```
+```{r}
+table(stormD$CROPDMGEXP)
+```
+```{r}
+stormD$PROPDMGEXP <- toupper(stormD$PROPDMGEXP)
+```
+```{r}
+stormD$CROPDMGEXP <- toupper(stormD$CROPDMGEXP)
+```
+```{r}
+stormD$CROPDMGFACTOR[(stormD$CROPDMGEXP == "")] <- 10^0
+```
+```{r}
+stormD$CROPDMGFACTOR[(stormD$CROPDMGEXP == "?")] <- 10^0
+```
+```{r}
+stormD$CROPDMGFACTOR[(stormD$CROPDMGEXP == "0")] <- 10^0
+```
+```{r}
+stormD$CROPDMGFACTOR[(stormD$CROPDMGEXP == "2")] <- 10^2
+```
+```{r}
+stormD$CROPDMGFACTOR[(stormD$CROPDMGEXP == "K")] <- 10^3
+```
+```{r}
+stormD$CROPDMGFACTOR[(stormD$CROPDMGEXP == "M")] <- 10^6
+```
+```{r}
+stormD$CROPDMGFACTOR[(stormD$CROPDMGEXP == "B")] <- 10^9
+```
+
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "")] <- 10^0
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "-")] <- 10^0
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "?")] <- 10^0
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "+")] <- 10^0
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "0")] <- 10^0
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "1")] <- 10^1
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "2")] <- 10^2
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "3")] <- 10^3
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "4")] <- 10^4
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "5")] <- 10^5
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "6")] <- 10^6
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "7")] <- 10^7
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "8")] <- 10^8
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "H")] <- 10^2
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "K")] <- 10^3
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "M")] <- 10^6
+```
+```{r}
+stormD$PROPDMGFACTOR[(stormD$PROPDMGEXP == "B")] <- 10^9
+```
+```{r}
+stormD <- mutate(stormD, HEALTHIMP = FATALITIES + INJURIES)
+```
+```{r}
+stormD <- mutate(stormD, ECONOMICCOST = PROPDMG * PROPDMGFACTOR + CROPDMG * CROPDMGFACTOR)
+```
+```{r}
+stormD$EVTYPE <- toupper(stormD$EVTYPE)
+```
+```{r}
+dim(data.frame(table(stormD$EVTYPE)))
+```
+```{r}
+healthImpact <- with(stormD, aggregate(HEALTHIMP ~ EVTYPE, FUN = sum))
+```
+```{r}
+subset(healthImpact, HEALTHIMP > quantile(HEALTHIMP, prob = 0.95))
+```
+```{r}
+stormD$EVTYPE[(stormD$EVTYPE == "TSTM WIND")] <- "THUNDERSTORM WIND"
+```
+```{r}
+stormD$EVTYPE[(stormD$EVTYPE == "HURRICANE/TYPHOON")] <- "HURRICANE (TYPHOON)"
+```
+```{r}
+economicCost <- with(stormD, aggregate(ECONOMICCOST ~ EVTYPE, FUN = sum))
+```
+```{r}
+subset(economicCost, ECONOMICCOST > quantile(ECONOMICCOST, prob = 0.95))
+```
+```{r}
+stormD$EVTYPE[(stormD$EVTYPE == "HURRICANE")] <- "HURRICANE (TYPHOON)"
+```
+```{r}
+stormD$EVTYPE[(stormD$EVTYPE == "STORM SURGE")] <- "STORM SURGE/TIDE"
+```
+
+```{r}
+healthImpact <- stormD %>% 
+                group_by(EVTYPE) %>% 
+                summarise(HEALTHIMP = sum(HEALTHIMP)) %>% 
+                arrange(desc(HEALTHIMP))
+```
+```{r}
+gr1 <- ggplot(healthImpact[1:10,], aes(x=reorder(EVTYPE, -HEALTHIMP),y=HEALTHIMP,color=EVTYPE)) + 
+      geom_bar(stat="identity", fill="purple") + 
+      theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+      xlab("Kind of Event") + ylab("Number of fatalities & injuries") +
+      theme(legend.position="none") +
+      ggtitle("Weather Events that cause Death and Injuries in the US")
+```
+```{r}
+print(gr1)
+```
+## The chart shows that Tornados are the most fatalities weather events for people’s health.
+```{r}
+economicCost <- stormD %>% 
+                group_by(EVTYPE) %>% 
+                summarise(ECONOMICCOST = sum(ECONOMICCOST)) %>% 
+                arrange(desc(ECONOMICCOST))
+```
+```{r}
+gr1 <- ggplot(economicCost[1:10,], aes(x=reorder(EVTYPE, -ECONOMICCOST),y=ECONOMICCOST,color=EVTYPE)) + 
+      geom_bar(stat="identity", fill="grey") + 
+      theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+      xlab("Kind of Event") + ylab("Economic Damage cost  (Billion $$$)") +
+      theme(legend.position="none") +
+      ggtitle("Weather Events with the Greatest Economic Cost")
+```
+## print the chart
+```{r}
+print(gr1)
+```
+# The chart shows that Floods have the biggest economical cost.
