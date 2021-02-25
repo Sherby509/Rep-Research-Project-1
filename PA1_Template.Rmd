@@ -1,0 +1,161 @@
+---
+title: "Reproductible Research (Project 1)"
+author: "Sherby509"
+date: "2/25/2021"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+getwd()
+```
+
+## Let's load the data (1)
+```{r}
+activity <- read.csv("activity.csv")
+```
+```{r}
+activity <- read.csv("activity.csv")
+```
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+library(dplyr)
+```
+
+```{r}
+Sys.setlocale("LC_TIME", "English")
+```
+```{r}
+str(activity)
+```
+Now we see thee type of variable:
+Steps
+Date
+Interval
+
+## Let's calculate the number of steps by day
+```{r}
+Steps.Day <- aggregate(activity$steps, list(activity$date), FUN=sum)
+```
+```{r}
+colnames(Steps.Day) <- c("Date", "Steps")
+```
+## lets print it
+```{r}
+print(Steps.Day)
+```
+## Let draw the histogram (2)
+```{r}
+g <- ggplot(Steps.Day, aes(Steps))
+```
+```{r}
+g+geom_histogram(boundary=0, binwidth=2500, col="darkgreen", fill="purple")+ggtitle("Histogram of Number of Steps per Day")+xlab("Steps")+ylab("Frequency")+theme(plot.title = element_text(face="bold", size=12))+scale_x_continuous(breaks=seq(0,25000,2500))+scale_y_continuous(breaks=seq(0,18,2))
+```
+## Let's find the mean and the median (3)
+
+# The mean
+```{r}
+mean(Steps.Day$Steps, na.rm=TRUE)
+```
+# The median
+```{r}
+median(Steps.Day$Steps, na.rm=TRUE)
+```
+## Now Time series plot of the average number of steps taken (4)
+```{r}
+Steps.Time <- aggregate(steps~interval,data=activity,FUN=mean,na.action=na.omit)
+```
+```{r}
+Steps.Time$time <- Steps.Time$interval/100
+```
+## Lets draw the plot
+```{r}
+h <- ggplot(Steps.Time, aes(time, steps))
+```
+```{r}
+h+geom_line(col="purple")+ggtitle("Average Number of Steps Taken interval")+xlab("Time")+ylab("Steps")+theme(plot.title = element_text(face="bold", size=20))
+```
+## The 5 minutes interval that contain the max of steps (5)
+```{r}
+Max.Steps <- tbl_df(Steps.Time)
+```
+```{r}
+Max.Steps %>% select(time, steps) %>% filter(steps==max(Max.Steps$steps))
+```
+## Imputing missing Data
+```{r}
+MV <- tbl_df(activity)
+```
+```{r}
+MV %>% filter(is.na(steps)) %>% summarize(missing_values = n())
+```
+## Replace the missing data
+```{r}
+activity$CompleteSteps <- ifelse(is.na(activity$steps), round(Steps.Time$steps[match(activity$interval, Steps.Time$interval)],0), activity$steps)
+
+```
+```{r}
+activityFull <- data.frame(steps=activity$CompleteSteps, interval=activity$interval, date=activity$date)
+```
+```{r}
+head(activityFull, n=10)
+```
+## Let's make the Histogram the max of steps taken each day with missing data filled in
+```{r}
+Steps.Day <- aggregate(activityFull$steps, list(activityFull$date), FUN=sum)
+colnames(Steps.Day) <- c("Date", "Steps")
+```
+```{r}
+g <- ggplot(Steps.Day, aes(Steps))
+```
+```{r}
+g+geom_histogram(boundary=0, binwidth=2500, col="red", fill="blue")+ggtitle("Histogram of Steps Taken")+xlab("Steps")+ylab("Frequency")+theme(plot.title = element_text(face="bold", size=12))+scale_x_continuous(breaks=seq(0,25000,2500))+scale_y_continuous(breaks=seq(0,26,2))
+```
+## Let's find the new mean and the median (different from the fist one) 
+# the mean
+```{r}
+mean(Steps.Day$Steps)
+```
+# the median
+```{r}
+median(Steps.Day$Steps)
+```
+## Are there differences in activity patterns between weekdays and weekends
+# Create variable with date in correct format
+```{r}
+activityFull$RealDate <- as.Date(activityFull$date, format = "%Y-%m-%d")
+```
+```{r}
+activityFull$weekday <- weekdays(activityFull$RealDate)
+```
+# create a new variable indicating weekday or weekend
+```{r}
+activityFull$DayType <- ifelse(activityFull$weekday=='Saturday' | activityFull$weekday=='Sunday', 'weekend','weekday')
+```
+# The first 15 values
+```{r}
+head(activityFull, n=15)
+```
+## Let's make a panel plot with a time series plot of the 5-minute interval as (x-axis) and  weekday days or weekend days as (y-axis). 
+```{r}
+Steps.TimeDT <- aggregate(steps~interval+DayType,data=activityFull,FUN=mean,na.action=na.omit)
+```
+```{r}
+Steps.TimeDT$time <- Steps.Time$interval/100
+```
+```{r}
+PL <- ggplot(Steps.TimeDT, aes(time, steps))
+```
+```{r}
+PL+geom_line(col="purple")+ggtitle("Average Steps of 5 Minutes Interval: weekdays vs. weekends")+xlab("Time")+ylab("Steps")+theme(plot.title = element_text(face="bold", size=12))+facet_grid(DayType ~ .)
+```
+
